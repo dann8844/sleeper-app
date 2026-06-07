@@ -10,6 +10,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { requestMicPermission, startRecording, stopRecording } from '../recorder';
+import { startBackgroundService, stopBackgroundService } from '../recorder/backgroundService';
 import { pickAudioFile } from '../analysis/filePicker';
 import { DEFAULT_THRESHOLD_DBFS } from '../analysis/engine';
 import { fmtDb } from '../utils/format';
@@ -43,7 +44,7 @@ export default function RecordScreen({ onAnalysisReady }: Props) {
         cleanupRef.current?.();
         setRecording(false);
         setAnalyzing(true);
-        // await stopBackgroundService();
+        await stopBackgroundService();
         const path = await stopRecording();
         onAnalysisReady(path, false, validThreshold ? threshold : DEFAULT_THRESHOLD_DBFS);
         setAnalyzing(false);
@@ -72,7 +73,7 @@ export default function RecordScreen({ onAnalysisReady }: Props) {
         });
         cleanupRef.current = cleanup;
         setRecording(true);
-        // await startBackgroundService();
+        await startBackgroundService();
       }
     } catch (e: any) {
       setRecording(false);
