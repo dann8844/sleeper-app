@@ -7,7 +7,6 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-  ActivityIndicator,
 } from 'react-native';
 import { requestMicPermission, startRecording, stopRecording } from '../recorder';
 import { startBackgroundService, stopBackgroundService } from '../recorder/backgroundService';
@@ -17,12 +16,12 @@ import { fmtDb } from '../utils/format';
 import { loadSettings, saveSettings } from '../utils/settings';
 
 interface Props {
+  onRecordingDone: (filePath: string, thresholdDb: number) => void;
   onAnalysisReady: (filePath: string, isSleepRecording: boolean, thresholdDb: number) => void;
 }
 
-export default function RecordScreen({ onAnalysisReady }: Props) {
+export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props) {
   const [recording, setRecording]       = useState(false);
-  const [analyzing, setAnalyzing]       = useState(false);
   const [noiseCount, setNoiseCount]     = useState(0);
   const [lastDb, setLastDb]             = useState<number | null>(null);
   const [isNoise, setIsNoise]           = useState(false);
@@ -43,14 +42,12 @@ export default function RecordScreen({ onAnalysisReady }: Props) {
       if (recording) {
         cleanupRef.current?.();
         setRecording(false);
-        setAnalyzing(true);
         await stopBackgroundService();
         const path = await stopRecording();
-        onAnalysisReady(path, false, validThreshold ? threshold : DEFAULT_THRESHOLD_DBFS);
-        setAnalyzing(false);
         setNoiseCount(0);
         setLastDb(null);
         setIsNoise(false);
+        onRecordingDone(path, validThreshold ? threshold : DEFAULT_THRESHOLD_DBFS);
       } else {
         const granted = await requestMicPermission();
         if (!granted) {
@@ -77,7 +74,6 @@ export default function RecordScreen({ onAnalysisReady }: Props) {
       }
     } catch (e: any) {
       setRecording(false);
-      setAnalyzing(false);
       Alert.alert('Error', e?.message ?? 'Something went wrong. Please try again.');
     }
   }
@@ -87,21 +83,10 @@ export default function RecordScreen({ onAnalysisReady }: Props) {
       const file = await pickAudioFile();
       if (!file) return;
       saveSettings({ thresholdAbs: Math.abs(threshold) });
-      setAnalyzing(true);
       onAnalysisReady(file.uri, true, validThreshold ? threshold : DEFAULT_THRESHOLD_DBFS);
     } catch (e: any) {
-      setAnalyzing(false);
       Alert.alert('Error', e?.message ?? 'Could not open file.');
     }
-  }
-
-  if (analyzing) {
-    return (
-      <View style={styles.container}>
-        <ActivityIndicator size="large" color="#1f6feb" />
-        <Text style={styles.analyzingText}>Analyzing recording…</Text>
-      </View>
-    );
   }
 
   return (
@@ -184,7 +169,6 @@ const styles = StyleSheet.create({
   statLabel:         { color: '#8b949e', fontSize: 13, letterSpacing: 1 },
   dbText:            { color: '#e6f4fe', fontSize: 20, fontFamily: 'monospace' },
   countText:         { color: '#58a6ff', fontSize: 16 },
-  analyzingText:     { color: '#8b949e', marginTop: 20, fontSize: 16 },
   settings:          { width: '100%', marginTop: 40, paddingHorizontal: 32, gap: 0 },
   settingRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderTopWidth: 1, borderTopColor: '#21262d' },
   settingLabelGroup: { flex: 1, marginRight: 16 },

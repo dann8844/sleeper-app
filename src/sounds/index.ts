@@ -2,7 +2,6 @@ import { Audio } from 'expo-av';
 
 const PLAY_COOLDOWN_MS = 1500;
 
-// All sounds bundled as static assets — Metro resolves these at build time
 const SOUND_ASSETS = [
   require('../../assets/sounds/dragon-studio-notification-sound-effect-372475.mp3'),
   require('../../assets/sounds/universfield-new-notification-022-370046.mp3'),
@@ -12,47 +11,41 @@ const SOUND_ASSETS = [
   require('../../assets/sounds/universfield-new-notification-057-494255.mp3'),
 ];
 
+let preloaded: Audio.Sound[] = [];
 let lastPlayedAt = 0;
-let activeSound: Audio.Sound | null = null;
 
-/**
- * Plays a random bundled notification sound, non-blocking.
- * Respects PLAY_COOLDOWN_MS to avoid rapid-fire playback.
- * Unloads the previous sound before loading the next one.
- */
-export async function playRandomSound(): Promise<void> {
-  const now = Date.now();
-  if (now - lastPlayedAt < PLAY_COOLDOWN_MS) return;
-  lastPlayedAt = now;
-
-  try {
-    if (activeSound) {
-      await activeSound.unloadAsync();
-      activeSound = null;
-    }
-
-    const asset = SOUND_ASSETS[Math.floor(Math.random() * SOUND_ASSETS.length)];
-    const { sound } = await Audio.Sound.createAsync(asset, { shouldPlay: true });
-    activeSound = sound;
-
-    // Auto-unload once playback finishes
-    sound.setOnPlaybackStatusUpdate(status => {
-      if (status.isLoaded && status.didJustFinish) {
-        sound.unloadAsync().catch(() => {});
-        if (activeSound === sound) activeSound = null;
-      }
-    });
-  } catch {
-    // Non-fatal — playback failure shouldn't interrupt recording
-  }
-}
-
-/** Call once at app startup to configure audio session for playback during recording. */
 export async function configureAudioSession(): Promise<void> {
   await Audio.setAudioModeAsync({
     allowsRecordingIOS: true,
     playsInSilentModeIOS: true,
     shouldDuckAndroid: false,
     playThroughEarpieceAndroid: false,
+    staysActiveInBackground: true,
   });
+}
+
+export async function preloadSounds(): Promise<void> {
+  const results = await Promise.all(
+    SOUND_ASSETS.map(asset => Audio.Sound.createAsync(asset, { shouldPlay: false }))
+  );
+  preloaded = results.map(r => r.sound);
+}
+
+export async function unloadSounds(): Promise<void> {
+  await Promise.all(preloaded.map(s => s.unloadAsync().catch(() => {})));
+  preloaded = [];
+}
+
+export async function playRandomSound(): Promise<void> {
+  const now = Date.now();
+  if (now - lastPlayedAt < PLAY_COOLDOWN_MS || preloaded.length === 0) return;
+  lastPlayedAt = now;
+
+  try {
+    const sound = preloaded[Math.floor(Math.random() * preloaded.length)];
+    await sound.setPositionAsync(0);
+    await sound.playAsync();
+  } catch {
+    // Non-fatal — playback failure shouldn't interrupt recording
+  }
 }

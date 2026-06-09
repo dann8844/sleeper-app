@@ -95,19 +95,21 @@ export default function ReportScreen({ report, onBack }: Props) {
               <Text style={[styles.col, styles.colDur]}>Dur</Text>
               <Text style={[styles.col, styles.colDb]}>Peak</Text>
             </View>
-            <FlatList
-              data={report.noiseEvents}
-              keyExtractor={(_, i) => String(i)}
-              scrollEnabled={false}
-              renderItem={({ item, index }: { item: NoiseEvent; index: number }) => (
-                <View style={[styles.tableRow, index % 2 === 0 && styles.tableRowAlt]}>
-                  <Text style={[styles.col, styles.colIdx, styles.cellText]}>{index + 1}</Text>
-                  <Text style={[styles.col, styles.colTime, styles.cellText]}>{fmtTime(item.startSec)}</Text>
-                  <Text style={[styles.col, styles.colDur, styles.cellText]}>{fmtSec(item.durationSec)}</Text>
-                  <Text style={[styles.col, styles.colDb, styles.cellText]}>{fmtDb(item.peakDb)}</Text>
-                </View>
-              )}
-            />
+            <View style={styles.eventsTable}>
+              <FlatList
+                data={report.noiseEvents}
+                keyExtractor={(_, i) => String(i)}
+                nestedScrollEnabled
+                renderItem={({ item, index }: { item: NoiseEvent; index: number }) => (
+                  <View style={[styles.tableRow, index % 2 === 0 && styles.tableRowAlt]}>
+                    <Text style={[styles.col, styles.colIdx, styles.cellText]}>{index + 1}</Text>
+                    <Text style={[styles.col, styles.colTime, styles.cellText]}>{fmtTime(item.startSec)}</Text>
+                    <Text style={[styles.col, styles.colDur, styles.cellText]}>{fmtSec(item.durationSec)}</Text>
+                    <Text style={[styles.col, styles.colDb, styles.cellText]}>{fmtDb(item.peakDb)}</Text>
+                  </View>
+                )}
+              />
+            </View>
           </View>
         )}
 
@@ -206,6 +208,7 @@ const styles = StyleSheet.create({
   rowValue:         { color: C.text, fontSize: 13, fontFamily: 'monospace' },
   rowValueHighlight:{ color: C.blue },
   tableHeader:      { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 6, borderTopWidth: 1, borderTopColor: C.border, borderBottomWidth: 1, borderBottomColor: C.border },
+  eventsTable:      { maxHeight: 300 },
   tableRow:         { flexDirection: 'row', paddingHorizontal: 12, paddingVertical: 6 },
   tableRowAlt:      { backgroundColor: '#0d1117' },
   col:              { flex: 1, color: C.muted, fontSize: 11, fontWeight: '600', letterSpacing: 0.5 },

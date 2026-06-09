@@ -32,8 +32,10 @@ export async function analyzeFile(
   const thresholdDb  = options.thresholdDb  ?? DEFAULT_THRESHOLD_DBFS;
   const windowMs     = options.windowMs     ?? DEFAULT_WINDOW_MS;
   const silenceGapMs = options.silenceGapMs ?? DEFAULT_SILENCE_GAP_MS;
-  const startSec     = options.startSec     ?? (options.isSleepRecording ? DEFAULT_START_OFFSET_MIN * 60 : 0);
-  const endSec       = options.endSec       ?? (options.isSleepRecording ? totalDurationSec - DEFAULT_END_OFFSET_MIN * 60 : totalDurationSec);
+  const minDurForOffsets = (DEFAULT_START_OFFSET_MIN + DEFAULT_END_OFFSET_MIN) * 60;
+  const useOffsets = options.isSleepRecording && totalDurationSec > minDurForOffsets;
+  const startSec   = options.startSec ?? (useOffsets ? DEFAULT_START_OFFSET_MIN * 60 : 0);
+  const endSec     = options.endSec   ?? (useOffsets ? totalDurationSec - DEFAULT_END_OFFSET_MIN * 60 : totalDurationSec);
 
   try {
     const windows = analyzeWindowsFromBuffer(pcm, thresholdDb, windowMs, startSec, endSec);
