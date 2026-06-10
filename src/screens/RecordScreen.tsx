@@ -22,7 +22,6 @@ interface Props {
 
 export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props) {
   const [recording, setRecording]       = useState(false);
-  const [calibrating, setCalibrating]   = useState(false);
   const [noiseCount, setNoiseCount]     = useState(0);
   const [lastDb, setLastDb]             = useState<number | null>(null);
   const [isNoise, setIsNoise]           = useState(false);
@@ -58,15 +57,10 @@ export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props
         setNoiseCount(0);
         setLastDb(null);
         setIsNoise(false);
-        setCalibrating(true);
         saveSettings({ thresholdAbs: Math.abs(threshold) });
         const cleanup = startRecording({
           thresholdDb: validThreshold ? threshold : DEFAULT_THRESHOLD_DBFS,
           soundEnabled,
-          onCalibrated: (calibratedDb) => {
-            setCalibrating(false);
-            setThreshold(String(Math.abs(Math.round(calibratedDb))));
-          },
           onNoise: (noise, db) => {
             setLastDb(db);
             setIsNoise(noise);
@@ -110,16 +104,10 @@ export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props
       {/* Live stats while recording */}
       {recording && (
         <View style={styles.stats}>
-          {calibrating ? (
-            <Text style={styles.calibratingText}>Calibrating noise floor…{'\n'}please be quiet for 10 s</Text>
-          ) : (
-            <>
-              <View style={[styles.indicator, isNoise && styles.indicatorActive]} />
-              <Text style={styles.statLabel}>{isNoise ? 'NOISE DETECTED' : 'Listening…'}</Text>
-              <Text style={styles.dbText}>{lastDb != null ? fmtDb(lastDb) : '—'}</Text>
-              <Text style={styles.countText}>{noiseCount} noise event{noiseCount !== 1 ? 's' : ''}</Text>
-            </>
-          )}
+          <View style={[styles.indicator, isNoise && styles.indicatorActive]} />
+          <Text style={styles.statLabel}>{isNoise ? 'NOISE DETECTED' : 'Listening…'}</Text>
+          <Text style={styles.dbText}>{lastDb != null ? fmtDb(lastDb) : '—'}</Text>
+          <Text style={styles.countText}>{noiseCount} noise event{noiseCount !== 1 ? 's' : ''}</Text>
         </View>
       )}
 
@@ -176,7 +164,6 @@ const styles = StyleSheet.create({
   btnActive:         { backgroundColor: '#da3633' },
   btnText:           { color: '#fff', fontSize: 22, fontWeight: '600' },
   stats:             { alignItems: 'center', marginTop: 48, gap: 12 },
-  calibratingText:   { color: '#8b949e', fontSize: 14, textAlign: 'center', lineHeight: 22 },
   indicator:         { width: 14, height: 14, borderRadius: 7, backgroundColor: '#3fb950', opacity: 0.3 },
   indicatorActive:   { backgroundColor: '#da3633', opacity: 1 },
   statLabel:         { color: '#8b949e', fontSize: 13, letterSpacing: 1 },

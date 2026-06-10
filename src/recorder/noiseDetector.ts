@@ -13,9 +13,8 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-export function createNoiseDetector(onNoise: NoiseCallback, initialThreshold: number) {
+export function createNoiseDetector(onNoise: NoiseCallback, thresholdDb: number) {
   let buf = new Uint8Array(0);
-  let thresholdDb = initialThreshold;
 
   function onChunk(base64: string) {
     const incoming = base64ToUint8Array(base64);
@@ -46,9 +45,5 @@ export function createNoiseDetector(onNoise: NoiseCallback, initialThreshold: nu
     buf = new Uint8Array(0);
   }
 
-  function setThreshold(db: number) {
-    thresholdDb = db;
-  }
-
-  return { onChunk, reset, setThreshold };
+  return { onChunk, reset };
 }
