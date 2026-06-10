@@ -35,14 +35,13 @@ export function createNoiseDetector(onNoise: NoiseCallback, thresholdDb: number)
       buf = buf.slice(windowBytes);
 
       let sumSq = 0;
-      const view = new DataView(win.buffer, win.byteOffset, win.byteLength);
       for (let s = 0; s < WINDOW_SAMPLES; s++) {
-        const sample = view.getInt16(s * BYTES_PER_SAMPLE, true);
+        const sample = win[s] - 128; // 8-bit unsigned → signed (-128..127)
         sumSq += sample * sample;
       }
 
       const rms = Math.sqrt(sumSq / WINDOW_SAMPLES);
-      const db = rms === 0 ? -Infinity : 20 * Math.log10(rms / 32768);
+      const db = rms === 0 ? -Infinity : 20 * Math.log10(rms / 128);
       const isNoise = db > thresholdDb;
 
       // Only fire on transitions to avoid flooding React state setters

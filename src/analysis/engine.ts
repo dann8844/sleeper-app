@@ -10,7 +10,7 @@ import {
 
 export const SAMPLE_RATE             = 8000;
 export const CHANNELS                = 1;
-export const BYTES_PER_SAMPLE        = 2;
+export const BYTES_PER_SAMPLE        = 1;
 export const DEFAULT_THRESHOLD_DBFS  = -54;
 export const DEFAULT_WINDOW_MS       = 100;
 export const DEFAULT_SILENCE_GAP_MS  = 500;
@@ -18,25 +18,22 @@ export const DEFAULT_START_OFFSET_MIN = 30;
 export const DEFAULT_END_OFFSET_MIN   = 20;
 export const SEQUENCE_GAP_SEC        = 10;
 
-const MAX_AMPLITUDE = 32768; // 2^15 for 16-bit signed PCM
-
 // ─── Signal Analysis ──────────────────────────────────────────────────────────
 
-function rmsToDbfs(rms: number): number {
-  return rms === 0 ? -Infinity : 20 * Math.log10(rms / MAX_AMPLITUDE);
-}
-
 /**
- * Sweep through a raw s16le PCM buffer (as Int16Array) in fixed windows.
+ * Sweep through a PCM buffer in fixed windows.
+ * Accepts Int16Array (16-bit signed) or Uint8Array (8-bit unsigned, silence=128).
  * startSec/endSec select the slice to analyze — the rest is skipped.
  */
 export function analyzeWindowsFromBuffer(
-  pcm: Int16Array,
+  pcm: Int16Array | Uint8Array,
   thresholdDb: number,
   windowMs: number,
   startSec: number,
   endSec: number
 ): WindowResult[] {
+  const is8bit       = pcm instanceof Uint8Array;
+  const maxAmplitude = is8bit ? 128 : 32768;
   const windowSamples  = Math.floor((SAMPLE_RATE * windowMs) / 1000);
   const results: WindowResult[] = [];
 
@@ -49,12 +46,13 @@ export function analyzeWindowsFromBuffer(
 
     let sumSq = 0;
     for (let s = 0; s < windowSamples; s++) {
-      const sample = pcm[offset + s];
+      const raw    = pcm[offset + s];
+      const sample = is8bit ? (raw as number) - 128 : raw;
       sumSq += sample * sample;
     }
 
     const rms = Math.sqrt(sumSq / windowSamples);
-    const db  = rmsToDbfs(rms);
+    const db  = rms === 0 ? -Infinity : 20 * Math.log10(rms / maxAmplitude);
     results.push({ startMs: wi * windowMs, db, isNoise: db > thresholdDb });
   }
 

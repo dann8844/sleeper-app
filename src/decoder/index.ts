@@ -2,7 +2,7 @@ import { isWav, readWavToPCM } from './wavParser';
 import { SAMPLE_RATE } from '../analysis/engine';
 
 export interface DecodeResult {
-  pcm: Int16Array;
+  pcm: Int16Array | Uint8Array;
   totalDurationSec: number;
   cleanup: () => void;
 }
