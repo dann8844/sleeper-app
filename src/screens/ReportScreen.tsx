@@ -31,16 +31,9 @@ export default function ReportScreen({ report, onBack }: Props) {
         return;
       }
 
-      const asset = await MediaLibrary.createAssetAsync(report.filePath);
-      const album = await MediaLibrary.getAlbumAsync('Sleeper');
-      if (album) {
-        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
-      } else {
-        await MediaLibrary.createAlbumAsync('Sleeper', asset, false);
-      }
-
+      await MediaLibrary.createAssetAsync(report.filePath);
       setSaved(true);
-      Alert.alert('Saved', 'Recording saved to the "Sleeper" album in your media library.');
+      Alert.alert('Saved', 'Recording saved to your media library.');
     } catch (e: any) {
       Alert.alert('Save failed', e?.message ?? 'Could not save the recording.');
     } finally {
