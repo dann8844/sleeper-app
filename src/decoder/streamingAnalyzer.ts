@@ -1,4 +1,4 @@
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import {
   SAMPLE_RATE,
   DEFAULT_THRESHOLD_DBFS,
@@ -23,8 +23,8 @@ function b64ToBytes(b64: string): Uint8Array {
 }
 
 async function readRange(uri: string, position: number, length: number): Promise<Uint8Array> {
-  const b64 = await (FileSystem as any).readAsStringAsync(uri, {
-    encoding: 'base64',
+  const b64 = await FileSystem.readAsStringAsync(uri, {
+    encoding: FileSystem.EncodingType.Base64,
     position,
     length,
   });
