@@ -29,14 +29,15 @@ export function createNoiseDetector(onNoise: NoiseCallback, thresholdDb: number)
       const win = buf.slice(0, windowBytes);
       buf = buf.slice(windowBytes);
 
+      const view = new DataView(win.buffer, win.byteOffset, win.byteLength);
       let sumSq = 0;
       for (let s = 0; s < WINDOW_SAMPLES; s++) {
-        const sample = win[s] - 128;
+        const sample = view.getInt16(s * 2, true);
         sumSq += sample * sample;
       }
 
       const rms = Math.sqrt(sumSq / WINDOW_SAMPLES);
-      const db = rms === 0 ? -Infinity : 20 * Math.log10(rms / 128);
+      const db = rms === 0 ? -Infinity : 20 * Math.log10(rms / 32768);
       onNoise(db > thresholdDb, db);
     }
   }

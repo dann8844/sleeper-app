@@ -10,7 +10,7 @@ import {
 
 export const SAMPLE_RATE             = 8000;
 export const CHANNELS                = 1;
-export const BYTES_PER_SAMPLE        = 1;
+export const BYTES_PER_SAMPLE        = 2;
 export const DEFAULT_THRESHOLD_DBFS  = -54;
 export const DEFAULT_WINDOW_MS       = 100;
 export const DEFAULT_SILENCE_GAP_MS  = 500;
