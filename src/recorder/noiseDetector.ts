@@ -13,13 +13,9 @@ function base64ToUint8Array(base64: string): Uint8Array {
   return bytes;
 }
 
-/**
- * Accumulates raw s16le PCM bytes (as base64 chunks from react-native-audio-record)
- * and fires onNoise on each noise/silence transition.
- */
-export function createNoiseDetector(onNoise: NoiseCallback, thresholdDb: number) {
+export function createNoiseDetector(onNoise: NoiseCallback, initialThreshold: number) {
   let buf = new Uint8Array(0);
-  let wasNoise = false;
+  let thresholdDb = initialThreshold;
 
   function onChunk(base64: string) {
     const incoming = base64ToUint8Array(base64);
@@ -36,26 +32,23 @@ export function createNoiseDetector(onNoise: NoiseCallback, thresholdDb: number)
 
       let sumSq = 0;
       for (let s = 0; s < WINDOW_SAMPLES; s++) {
-        const sample = win[s] - 128; // 8-bit unsigned → signed (-128..127)
+        const sample = win[s] - 128;
         sumSq += sample * sample;
       }
 
       const rms = Math.sqrt(sumSq / WINDOW_SAMPLES);
       const db = rms === 0 ? -Infinity : 20 * Math.log10(rms / 128);
-      const isNoise = db > thresholdDb;
-
-      // Only fire on transitions to avoid flooding React state setters
-      if (isNoise !== wasNoise) {
-        onNoise(isNoise, db);
-        wasNoise = isNoise;
-      }
+      onNoise(db > thresholdDb, db);
     }
   }
 
   function reset() {
     buf = new Uint8Array(0);
-    wasNoise = false;
   }
 
-  return { onChunk, reset };
+  function setThreshold(db: number) {
+    thresholdDb = db;
+  }
+
+  return { onChunk, reset, setThreshold };
 }
