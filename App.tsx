@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { configureAudioSession, preloadSounds } from './src/sounds';
 import { analyzeFile } from './src/analysis/runner';
@@ -37,6 +37,8 @@ export default function App() {
       setReport(result);
       setScreen('report');
     } catch (e: any) {
+      const msg = String(e?.message ?? e ?? 'Unknown error');
+      Alert.alert('Analysis failed', msg);
       setScreen('record');
     }
   }
