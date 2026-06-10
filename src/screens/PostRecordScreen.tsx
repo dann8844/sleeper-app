@@ -33,9 +33,9 @@ export default function PostRecordScreen({ filePath, onAnalyze, onBack }: Props)
       const asset = await MediaLibrary.createAssetAsync(filePath);
       const album = await MediaLibrary.getAlbumAsync('Sleeper');
       if (album) {
-        await MediaLibrary.addAssetsToAlbumAsync([asset], album, true);
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
       } else {
-        await MediaLibrary.createAlbumAsync('Sleeper', asset, true);
+        await MediaLibrary.createAlbumAsync('Sleeper', asset, false);
       }
       setSaved(true);
       Alert.alert('Saved', 'Recording saved to the "Sleeper" album.');

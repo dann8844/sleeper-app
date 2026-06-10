@@ -32,14 +32,11 @@ export default function ReportScreen({ report, onBack }: Props) {
       }
 
       const asset = await MediaLibrary.createAssetAsync(report.filePath);
-
-      // copyAsset = true: copies into the album instead of moving,
-      // which avoids the Android 10+ scoped-storage write-permission dialog.
       const album = await MediaLibrary.getAlbumAsync('Sleeper');
       if (album) {
-        await MediaLibrary.addAssetsToAlbumAsync([asset], album, true);
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, false);
       } else {
-        await MediaLibrary.createAlbumAsync('Sleeper', asset, true);
+        await MediaLibrary.createAlbumAsync('Sleeper', asset, false);
       }
 
       setSaved(true);
@@ -120,7 +117,7 @@ export default function ReportScreen({ report, onBack }: Props) {
             <View style={styles.tableHeader}>
               <Text style={[styles.col, styles.colIdx]}>Noises</Text>
               <Text style={[styles.col, styles.colDur]}>Count</Text>
-              <Text style={[styles.col, { flex: 3 }]}>First start</Text>
+              <Text style={[styles.col, styles.colTimes]}>Start times</Text>
             </View>
             <FlatList
               data={report.sequences}
@@ -130,7 +127,11 @@ export default function ReportScreen({ report, onBack }: Props) {
                 <View style={[styles.tableRow, index % 2 === 0 && styles.tableRowAlt]}>
                   <Text style={[styles.col, styles.colIdx, styles.cellText]}>{item.noiseCount}</Text>
                   <Text style={[styles.col, styles.colDur, styles.cellText]}>{item.sequenceCount}×</Text>
-                  <Text style={[styles.col, { flex: 3 }, styles.cellText]}>{fmtTimeSec(item.startTimes[0])}</Text>
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.colTimes}>
+                    <Text style={styles.cellText}>
+                      {item.startTimes.map(t => fmtTimeSec(t)).join('  ')}
+                    </Text>
+                  </ScrollView>
                 </View>
               )}
             />
@@ -216,6 +217,7 @@ const styles = StyleSheet.create({
   colTime:          { flex: 2 },
   colDur:           { flex: 1 },
   colDb:            { flex: 1.4 },
+  colTimes:         { flex: 3 },
   cellText:         { color: C.text, fontSize: 12, fontFamily: 'monospace', fontWeight: '400' },
   noiseHighlight:   { color: C.red },
   emptyText:        { color: C.muted, textAlign: 'center', padding: 20, fontSize: 14 },
