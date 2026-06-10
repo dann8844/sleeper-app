@@ -8,7 +8,7 @@ import {
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-export const SAMPLE_RATE             = 8000;
+export const SAMPLE_RATE             = 16000;
 export const CHANNELS                = 1;
 export const BYTES_PER_SAMPLE        = 2;
 export const DEFAULT_THRESHOLD_DBFS  = -54;
@@ -177,7 +177,8 @@ export function buildReport(
   silenceGapMs: number,
   analyzeStartSec: number,
   analyzeEndSec: number,
-  totalDurationSec: number
+  totalDurationSec: number,
+  fileSampleRate: number = SAMPLE_RATE
 ): AnalysisReport {
   const noiseWindows      = windows.filter(w => w.isNoise);
   const totalNoiseTimeSec = (noiseWindows.length * windowMs) / 1000;
@@ -191,7 +192,7 @@ export function buildReport(
   return {
     filePath,
     durationSec: analyzeEndSec - analyzeStartSec,
-    sampleRate: SAMPLE_RATE,
+    sampleRate: fileSampleRate,
     windowMs,
     thresholdDb,
     silenceGapMs,

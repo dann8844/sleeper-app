@@ -36,7 +36,7 @@ export function startRecording(options: RecorderOptions = {}): () => void {
       sampleRate:    SAMPLE_RATE,
       channels:      1,
       bitsPerSample: BYTES_PER_SAMPLE * 8,
-      audioSource:   1,
+      audioSource:   6, // VOICE_RECOGNITION: applies AGC, noise suppression, echo cancellation
       wavFile:       buildFilename(threshold, soundEnabled),
     });
     initialized = true;

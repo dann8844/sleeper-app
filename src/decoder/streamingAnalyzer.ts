@@ -1,6 +1,5 @@
 import * as FileSystem from 'expo-file-system/legacy';
 import {
-  SAMPLE_RATE,
   DEFAULT_THRESHOLD_DBFS,
   DEFAULT_WINDOW_MS,
   DEFAULT_SILENCE_GAP_MS,
@@ -33,7 +32,12 @@ async function readRange(uri: string, position: number, length: number): Promise
 
 // ─── WAV Header ───────────────────────────────────────────────────────────────
 
-interface WavInfo { dataOffset: number; dataSize: number; bitsPerSample: number; }
+interface WavInfo {
+  dataOffset:    number;
+  dataSize:      number;
+  sampleRate:    number;
+  bitsPerSample: number;
+}
 
 function parseWavHeader(h: Uint8Array): WavInfo {
   if (h[0] !== 0x52 || h[1] !== 0x49 || h[2] !== 0x46 || h[3] !== 0x46) {
@@ -43,28 +47,35 @@ function parseWavHeader(h: Uint8Array): WavInfo {
   let offset = 12;
   let dataOffset = -1;
   let dataSize = 0;
+  let sampleRate = 8000;   // fallback for malformed headers
   let bitsPerSample = 16;
 
   while (offset + 8 <= h.length) {
     const id   = String.fromCharCode(h[offset], h[offset+1], h[offset+2], h[offset+3]);
     const size = view.getUint32(offset + 4, true);
-    if      (id === 'fmt ')  { bitsPerSample = view.getUint16(offset + 22, true); }
-    else if (id === 'data')  { dataOffset = offset + 8; dataSize = size; break; }
+    if (id === 'fmt ') {
+      sampleRate    = view.getUint32(offset + 12, true);
+      bitsPerSample = view.getUint16(offset + 22, true);
+    } else if (id === 'data') {
+      dataOffset = offset + 8;
+      dataSize   = size;
+      break;
+    }
     offset += 8 + size;
   }
 
   if (dataOffset === -1) throw new Error('WAV file has no data chunk');
-  return { dataOffset, dataSize, bitsPerSample };
+  return { dataOffset, dataSize, sampleRate, bitsPerSample };
 }
 
 // ─── Streaming Analysis ───────────────────────────────────────────────────────
 
 export interface StreamingOptions {
-  thresholdDb?:   number;
-  windowMs?:      number;
-  silenceGapMs?:  number;
-  startSec?:      number;
-  endSec?:        number;
+  thresholdDb?:      number;
+  windowMs?:         number;
+  silenceGapMs?:     number;
+  startSec?:         number;
+  endSec?:           number;
   isSleepRecording?: boolean;
 }
 
@@ -75,10 +86,10 @@ export async function analyzeWavStreaming(
   const uri = filePath.startsWith('file://') ? filePath : `file://${filePath}`;
 
   const header = await readRange(uri, 0, 512);
-  const { dataOffset, dataSize, bitsPerSample } = parseWavHeader(header);
+  const { dataOffset, dataSize, sampleRate, bitsPerSample } = parseWavHeader(header);
 
-  const bytesPerSample  = bitsPerSample / 8;
-  const totalDurationSec = (dataSize / bytesPerSample) / SAMPLE_RATE;
+  const bytesPerSample   = bitsPerSample / 8;
+  const totalDurationSec = (dataSize / bytesPerSample) / sampleRate;
 
   const thresholdDb  = options.thresholdDb  ?? DEFAULT_THRESHOLD_DBFS;
   const windowMs     = options.windowMs     ?? DEFAULT_WINDOW_MS;
@@ -91,12 +102,12 @@ export async function analyzeWavStreaming(
 
   const is8bit        = bitsPerSample === 8;
   const maxAmplitude  = is8bit ? 128 : 32768;
-  const windowSamples = Math.floor(SAMPLE_RATE * windowMs / 1000);
+  const windowSamples = Math.floor(sampleRate * windowMs / 1000);
   const windowBytes   = windowSamples * bytesPerSample;
 
-  const readStart = dataOffset + Math.floor(startSec * SAMPLE_RATE) * bytesPerSample;
+  const readStart = dataOffset + Math.floor(startSec * sampleRate) * bytesPerSample;
   const readEnd   = Math.min(
-    dataOffset + Math.ceil(endSec * SAMPLE_RATE) * bytesPerSample,
+    dataOffset + Math.ceil(endSec * sampleRate) * bytesPerSample,
     dataOffset + dataSize
   );
 
@@ -143,5 +154,5 @@ export async function analyzeWavStreaming(
   }
 
   const events = detectNoiseEvents(allWindows, windowMs, silenceGapMs);
-  return buildReport(filePath, allWindows, events, thresholdDb, windowMs, silenceGapMs, startSec, endSec, totalDurationSec);
+  return buildReport(filePath, allWindows, events, thresholdDb, windowMs, silenceGapMs, startSec, endSec, totalDurationSec, sampleRate);
 }
