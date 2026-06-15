@@ -3,16 +3,26 @@ import { DEFAULT_THRESHOLD_DBFS } from '../analysis/engine';
 
 interface Settings {
   thresholdAbs: number;
+  bonnet:       boolean;
+  headphones:   boolean;
 }
 
 const FILE = new File(Paths.document, 'sleeper-settings.json');
-const DEFAULTS: Settings = { thresholdAbs: Math.abs(DEFAULT_THRESHOLD_DBFS) };
+const DEFAULTS: Settings = {
+  thresholdAbs: Math.abs(DEFAULT_THRESHOLD_DBFS),
+  bonnet:       false,
+  headphones:   false,
+};
 
 export async function loadSettings(): Promise<Settings> {
   try {
     if (FILE.exists) {
       const parsed = JSON.parse(await FILE.text());
-      if (typeof parsed.thresholdAbs === 'number') return parsed;
+      return {
+        thresholdAbs: typeof parsed.thresholdAbs === 'number' ? parsed.thresholdAbs : DEFAULTS.thresholdAbs,
+        bonnet:       typeof parsed.bonnet       === 'boolean' ? parsed.bonnet       : DEFAULTS.bonnet,
+        headphones:   typeof parsed.headphones   === 'boolean' ? parsed.headphones   : DEFAULTS.headphones,
+      };
     }
   } catch {}
   return DEFAULTS;

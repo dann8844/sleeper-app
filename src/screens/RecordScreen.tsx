@@ -27,11 +27,17 @@ export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props
   const [isNoise, setIsNoise]           = useState(false);
   const [thresholdInput, setThreshold]  = useState(String(Math.abs(DEFAULT_THRESHOLD_DBFS)));
   const [soundEnabled, setSoundEnabled] = useState(true);
+  const [bonnet, setBonnet]             = useState(false);
+  const [headphones, setHeadphones]     = useState(false);
   const cleanupRef                      = useRef<(() => void) | null>(null);
   const prevNoiseRef                    = useRef(false);
 
   useEffect(() => {
-    loadSettings().then(s => setThreshold(String(s.thresholdAbs)));
+    loadSettings().then(s => {
+      setThreshold(String(s.thresholdAbs));
+      setBonnet(s.bonnet);
+      setHeadphones(s.headphones);
+    });
   }, []);
 
   const threshold = -Math.abs(parseFloat(thresholdInput));
@@ -57,10 +63,12 @@ export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props
         setNoiseCount(0);
         setLastDb(null);
         setIsNoise(false);
-        saveSettings({ thresholdAbs: Math.abs(threshold) });
+        saveSettings({ thresholdAbs: Math.abs(threshold), bonnet, headphones });
         const cleanup = startRecording({
           thresholdDb: validThreshold ? threshold : DEFAULT_THRESHOLD_DBFS,
           soundEnabled,
+          bonnet,
+          headphones,
           onNoise: (noise, db) => {
             setLastDb(db);
             setIsNoise(noise);
@@ -82,7 +90,7 @@ export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props
     try {
       const file = await pickAudioFile();
       if (!file) return;
-      saveSettings({ thresholdAbs: Math.abs(threshold) });
+      saveSettings({ thresholdAbs: Math.abs(threshold), bonnet, headphones });
       onAnalysisReady(file.uri, true, validThreshold ? threshold : DEFAULT_THRESHOLD_DBFS);
     } catch (e: any) {
       Alert.alert('Error', e?.message ?? 'Could not open file.');
@@ -143,6 +151,34 @@ export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props
             <Switch
               value={soundEnabled}
               onValueChange={setSoundEnabled}
+              trackColor={{ false: '#21262d', true: '#1f6feb' }}
+              thumbColor="#fff"
+            />
+          </View>
+
+          {/* Bonnet toggle */}
+          <View style={styles.settingRow}>
+            <View style={styles.settingLabelGroup}>
+              <Text style={styles.settingLabel}>Bonnet</Text>
+              <Text style={styles.settingHint}>wearing a sleep bonnet</Text>
+            </View>
+            <Switch
+              value={bonnet}
+              onValueChange={setBonnet}
+              trackColor={{ false: '#21262d', true: '#1f6feb' }}
+              thumbColor="#fff"
+            />
+          </View>
+
+          {/* Headphones toggle */}
+          <View style={styles.settingRow}>
+            <View style={styles.settingLabelGroup}>
+              <Text style={styles.settingLabel}>Headphones</Text>
+              <Text style={styles.settingHint}>wearing headphones or earbuds</Text>
+            </View>
+            <Switch
+              value={headphones}
+              onValueChange={setHeadphones}
               trackColor={{ false: '#21262d', true: '#1f6feb' }}
               thumbColor="#fff"
             />
