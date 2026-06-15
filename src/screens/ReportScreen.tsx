@@ -120,11 +120,13 @@ export default function ReportScreen({ report, onBack }: Props) {
                 <View style={[styles.tableRow, index % 2 === 0 && styles.tableRowAlt]}>
                   <Text style={[styles.col, styles.colIdx, styles.cellText]}>{item.noiseCount}</Text>
                   <Text style={[styles.col, styles.colDur, styles.cellText]}>{item.sequenceCount}×</Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.colTimes}>
-                    <Text style={styles.cellText}>
-                      {item.startTimes.map(t => fmtTimeSec(t)).join('  ')}
-                    </Text>
-                  </ScrollView>
+                  <View style={styles.colTimes}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                      <Text style={styles.cellText}>
+                        {item.startTimes.map(t => fmtTimeSec(t)).join('  ')}
+                      </Text>
+                    </ScrollView>
+                  </View>
                 </View>
               )}
             />
