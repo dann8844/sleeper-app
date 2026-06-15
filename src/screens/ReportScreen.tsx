@@ -3,6 +3,7 @@ import {
   Alert,
   FlatList,
   ScrollView,
+  Share,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -11,6 +12,7 @@ import {
 import * as MediaLibrary from 'expo-media-library';
 import { AnalysisReport, NoiseEvent, NoiseByHourRow, NoiseSequenceRow } from '../analysis/types';
 import { fmtDb, fmtSec, fmtPct, fmtTime, fmtTimeSec, fmtHM } from '../utils/format';
+import { saveReport, getReportJson } from '../analysis/reportSaver';
 
 interface Props {
   report: AnalysisReport;
@@ -18,26 +20,63 @@ interface Props {
 }
 
 export default function ReportScreen({ report, onBack }: Props) {
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved]   = useState(false);
+  const [savingWav,    setSavingWav]    = useState(false);
+  const [savedWav,     setSavedWav]     = useState(false);
+  const [savingReport, setSavingReport] = useState(false);
+  const [savedReport,  setSavedReport]  = useState(false);
   const fileName = report.filePath.split('/').pop() ?? report.filePath;
 
-  async function handleSave() {
+  async function handleSaveWav() {
     try {
-      setSaving(true);
+      setSavingWav(true);
       const { status } = await MediaLibrary.requestPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert('Permission required', 'Storage access is needed to save the recording.');
         return;
       }
-
-      await MediaLibrary.createAssetAsync(report.filePath);
-      setSaved(true);
-      Alert.alert('Saved', 'Recording saved to your media library.');
+      const asset = await MediaLibrary.createAssetAsync(report.filePath);
+      const album = await MediaLibrary.getAlbumAsync('Sleeper');
+      if (album) {
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, true);
+      } else {
+        await MediaLibrary.createAlbumAsync('Sleeper', asset, true);
+      }
+      // Remove the copy that createAssetAsync placed in the default location.
+      // Silently fails on Android 11+ — acceptable; user gets 2 copies instead of an error.
+      try { await MediaLibrary.deleteAssetsAsync([asset]); } catch (_) {}
+      setSavedWav(true);
+      Alert.alert('Saved', 'Recording saved to the Sleeper album.');
     } catch (e: any) {
       Alert.alert('Save failed', e?.message ?? 'Could not save the recording.');
     } finally {
-      setSaving(false);
+      setSavingWav(false);
+    }
+  }
+
+  async function handleSaveReport() {
+    try {
+      setSavingReport(true);
+      await saveReport(report);
+      setSavedReport(true);
+      Alert.alert(
+        'Report saved',
+        'The analysis report was saved inside the app.\nTap "Share report" to export it.',
+      );
+    } catch (e: any) {
+      Alert.alert('Save failed', e?.message ?? 'Could not save the report.');
+    } finally {
+      setSavingReport(false);
+    }
+  }
+
+  async function handleShareReport() {
+    try {
+      await Share.share({
+        message: getReportJson(report),
+        title: fileName.replace(/\.wav$/i, ' report'),
+      });
+    } catch (e: any) {
+      Alert.alert('Share failed', e?.message ?? 'Could not share the report.');
     }
   }
 
@@ -48,14 +87,25 @@ export default function ReportScreen({ report, onBack }: Props) {
         <TouchableOpacity onPress={onBack} style={styles.backBtn}>
           <Text style={styles.backText}>← New Recording</Text>
         </TouchableOpacity>
-        <View style={styles.headerRow}>
-          <Text style={styles.fileName} numberOfLines={1}>{fileName}</Text>
+        <Text style={styles.fileName} numberOfLines={1}>{fileName}</Text>
+
+        <View style={styles.headerBtns}>
           <TouchableOpacity
-            onPress={handleSave}
-            disabled={saving || saved}
-            style={[styles.saveBtn, saved && styles.saveBtnDone]}
+            onPress={handleSaveWav}
+            disabled={savingWav || savedWav}
+            style={[styles.hBtn, savedWav && styles.hBtnDone]}
           >
-            <Text style={styles.saveBtnText}>{saved ? '✓ Saved' : saving ? 'Saving…' : 'Save to device'}</Text>
+            <Text style={styles.hBtnText}>{savedWav ? '✓ Recording' : savingWav ? '…' : 'Save recording'}</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            onPress={savedReport ? handleShareReport : handleSaveReport}
+            disabled={savingReport}
+            style={[styles.hBtn, savedReport && styles.hBtnDone]}
+          >
+            <Text style={styles.hBtnText}>
+              {savingReport ? '…' : savedReport ? 'Share report' : 'Save report'}
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -190,11 +240,11 @@ const styles = StyleSheet.create({
   header:           { backgroundColor: C.card, borderBottomColor: C.border, borderBottomWidth: 1, paddingTop: 52, paddingHorizontal: 16, paddingBottom: 12 },
   backBtn:          { marginBottom: 8 },
   backText:         { color: C.blue, fontSize: 14 },
-  headerRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },
-  fileName:         { color: C.text, fontSize: 15, fontWeight: '600', flex: 1 },
-  saveBtn:          { backgroundColor: '#1f6feb', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 6 },
-  saveBtnDone:      { backgroundColor: '#238636' },
-  saveBtnText:      { color: '#fff', fontSize: 13, fontWeight: '600' },
+  fileName:         { color: C.text, fontSize: 13, fontWeight: '600', marginBottom: 10 },
+  headerBtns:       { flexDirection: 'row', gap: 8 },
+  hBtn:             { flex: 1, backgroundColor: '#21262d', borderWidth: 1, borderColor: C.border, paddingVertical: 7, paddingHorizontal: 10, borderRadius: 6, alignItems: 'center' },
+  hBtnDone:         { backgroundColor: '#238636', borderColor: '#238636' },
+  hBtnText:         { color: '#fff', fontSize: 12, fontWeight: '600' },
   scroll:           { flex: 1 },
   scrollContent:    { padding: 16, gap: 16, paddingBottom: 40 },
   card:             { backgroundColor: C.card, borderRadius: 10, borderWidth: 1, borderColor: C.border, overflow: 'hidden' },

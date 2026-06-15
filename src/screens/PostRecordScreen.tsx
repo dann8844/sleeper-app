@@ -30,9 +30,16 @@ export default function PostRecordScreen({ filePath, onAnalyze, onBack }: Props)
         Alert.alert('Permission required', 'Storage access is needed to save the recording.');
         return;
       }
-      await MediaLibrary.createAssetAsync(filePath);
+      const asset = await MediaLibrary.createAssetAsync(filePath);
+      const album = await MediaLibrary.getAlbumAsync('Sleeper');
+      if (album) {
+        await MediaLibrary.addAssetsToAlbumAsync([asset], album, true);
+      } else {
+        await MediaLibrary.createAlbumAsync('Sleeper', asset, true);
+      }
+      try { await MediaLibrary.deleteAssetsAsync([asset]); } catch (_) {}
       setSaved(true);
-      Alert.alert('Saved', 'Recording saved to your media library.');
+      Alert.alert('Saved', 'Recording saved to the Sleeper album.');
     } catch (e: any) {
       Alert.alert('Save failed', e?.message ?? 'Could not save the recording.');
     } finally {
