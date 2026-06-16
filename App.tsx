@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Alert, BackHandler, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { configureAudioSession, preloadSounds } from './src/sounds';
 import { analyzeFile } from './src/analysis/runner';
@@ -25,15 +25,23 @@ export default function App() {
     preloadSounds();
   }, []);
 
+  useEffect(() => {
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (screen !== 'record') { handleBack(); return true; }
+      return false;
+    });
+    return () => sub.remove();
+  }, [screen]);
+
   function handleRecordingDone(filePath: string, thresholdDb: number) {
     setPostRecord({ filePath, thresholdDb });
     setScreen('post-record');
   }
 
-  async function handleAnalysisReady(filePath: string, isSleepRecording: boolean, thresholdDb: number) {
+  async function handleAnalysisReady(filePath: string, isSleepRecording: boolean, thresholdDb: number, displayName?: string) {
     setScreen('analyzing');
     try {
-      const result = await analyzeFile(filePath, { isSleepRecording, thresholdDb });
+      const result = await analyzeFile(filePath, { isSleepRecording, thresholdDb, displayName });
       setReport(result);
       setScreen('report');
     } catch (e: any) {

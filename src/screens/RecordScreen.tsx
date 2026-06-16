@@ -17,7 +17,7 @@ import { loadSettings, saveSettings } from '../utils/settings';
 
 interface Props {
   onRecordingDone: (filePath: string, thresholdDb: number) => void;
-  onAnalysisReady: (filePath: string, isSleepRecording: boolean, thresholdDb: number) => void;
+  onAnalysisReady: (filePath: string, isSleepRecording: boolean, thresholdDb: number, displayName?: string) => void;
 }
 
 export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props) {
@@ -91,7 +91,7 @@ export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props
       const file = await pickAudioFile();
       if (!file) return;
       saveSettings({ thresholdAbs: Math.abs(threshold), bonnet, headphones });
-      onAnalysisReady(file.uri, true, validThreshold ? threshold : DEFAULT_THRESHOLD_DBFS);
+      onAnalysisReady(file.uri, true, validThreshold ? threshold : DEFAULT_THRESHOLD_DBFS, file.name);
     } catch (e: any) {
       Alert.alert('Error', e?.message ?? 'Could not open file.');
     }

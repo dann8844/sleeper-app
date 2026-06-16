@@ -17,6 +17,7 @@ export interface NoiseEvent {
 
 export interface AnalysisReport {
   filePath: string;
+  displayName?: string;
   durationSec: number;
   sampleRate: number;
   windowMs: number;

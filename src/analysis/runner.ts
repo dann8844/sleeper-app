@@ -10,6 +10,7 @@ export async function analyzeFile(
     startSec?:         number;
     endSec?:           number;
     isSleepRecording?: boolean;
+    displayName?:      string;
   } = {}
 ): Promise<AnalysisReport> {
   if (!filePath.toLowerCase().endsWith('.wav')) {

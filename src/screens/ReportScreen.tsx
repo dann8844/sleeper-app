@@ -34,7 +34,7 @@ export default function ReportScreen({ report, onBack }: Props) {
   const [savingReport, setSavingReport] = useState(false);
   const [savedReport,  setSavedReport]  = useState(false);
   const fileName = report.filePath.split('/').pop() ?? report.filePath;
-  const meta = parseRecordingMeta(fileName);
+  const meta = parseRecordingMeta(report.displayName ?? fileName);
 
   async function handleSaveWav() {
     try {

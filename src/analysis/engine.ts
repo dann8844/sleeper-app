@@ -178,7 +178,8 @@ export function buildReport(
   analyzeStartSec: number,
   analyzeEndSec: number,
   totalDurationSec: number,
-  fileSampleRate: number = SAMPLE_RATE
+  fileSampleRate: number = SAMPLE_RATE,
+  displayName?: string
 ): AnalysisReport {
   const noiseWindows      = windows.filter(w => w.isNoise);
   const totalNoiseTimeSec = (noiseWindows.length * windowMs) / 1000;
@@ -191,6 +192,7 @@ export function buildReport(
 
   return {
     filePath,
+    ...(displayName ? { displayName } : {}),
     durationSec: analyzeEndSec - analyzeStartSec,
     sampleRate: fileSampleRate,
     windowMs,

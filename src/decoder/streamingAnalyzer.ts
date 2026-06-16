@@ -77,6 +77,7 @@ export interface StreamingOptions {
   startSec?:         number;
   endSec?:           number;
   isSleepRecording?: boolean;
+  displayName?:      string;
 }
 
 export async function analyzeWavStreaming(
@@ -154,5 +155,5 @@ export async function analyzeWavStreaming(
   }
 
   const events = detectNoiseEvents(allWindows, windowMs, silenceGapMs);
-  return buildReport(filePath, allWindows, events, thresholdDb, windowMs, silenceGapMs, startSec, endSec, totalDurationSec, sampleRate);
+  return buildReport(filePath, allWindows, events, thresholdDb, windowMs, silenceGapMs, startSec, endSec, totalDurationSec, sampleRate, options.displayName);
 }
