@@ -34,18 +34,9 @@ export default function ReportScreen({ report, onBack }: Props) {
         Alert.alert('Permission required', 'Storage access is needed to save the recording.');
         return;
       }
-      const asset = await MediaLibrary.createAssetAsync(report.filePath);
-      const album = await MediaLibrary.getAlbumAsync('Sleeper');
-      if (album) {
-        await MediaLibrary.addAssetsToAlbumAsync([asset], album, true);
-      } else {
-        await MediaLibrary.createAlbumAsync('Sleeper', asset, true);
-      }
-      // Remove the copy that createAssetAsync placed in the default location.
-      // Silently fails on Android 11+ — acceptable; user gets 2 copies instead of an error.
-      try { await MediaLibrary.deleteAssetsAsync([asset]); } catch (_) {}
+      await MediaLibrary.createAssetAsync(report.filePath);
       setSavedWav(true);
-      Alert.alert('Saved', 'Recording saved to the Sleeper album.');
+      Alert.alert('Saved', 'Recording saved to your media library.');
     } catch (e: any) {
       Alert.alert('Save failed', e?.message ?? 'Could not save the recording.');
     } finally {
@@ -58,10 +49,7 @@ export default function ReportScreen({ report, onBack }: Props) {
       setSavingReport(true);
       await saveReport(report);
       setSavedReport(true);
-      Alert.alert(
-        'Report saved',
-        'The analysis report was saved inside the app.\nTap "Share report" to export it.',
-      );
+      Alert.alert('Report saved', 'JSON report saved to your chosen folder.');
     } catch (e: any) {
       Alert.alert('Save failed', e?.message ?? 'Could not save the report.');
     } finally {
