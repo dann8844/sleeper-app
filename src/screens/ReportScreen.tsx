@@ -19,12 +19,22 @@ interface Props {
   onBack: () => void;
 }
 
+function parseRecordingMeta(fileName: string): { sound: boolean; bonnet: boolean; headphones: boolean } | null {
+  if (!fileName.startsWith('sleeper_')) return null;
+  return {
+    sound:      fileName.includes('sound-on'),
+    bonnet:     fileName.includes('bonnet'),
+    headphones: fileName.includes('headphones'),
+  };
+}
+
 export default function ReportScreen({ report, onBack }: Props) {
   const [savingWav,    setSavingWav]    = useState(false);
   const [savedWav,     setSavedWav]     = useState(false);
   const [savingReport, setSavingReport] = useState(false);
   const [savedReport,  setSavedReport]  = useState(false);
   const fileName = report.filePath.split('/').pop() ?? report.filePath;
+  const meta = parseRecordingMeta(fileName);
 
   async function handleSaveWav() {
     try {
@@ -103,6 +113,9 @@ export default function ReportScreen({ report, onBack }: Props) {
         {/* ── Summary ── */}
         <View style={styles.card}>
           <Text style={styles.cardTitle}>SUMMARY</Text>
+          {meta && <Row label="Sound"      value={meta.sound      ? 'on' : 'off'} />}
+          {meta && <Row label="Bonnet"     value={meta.bonnet     ? 'yes' : 'no'} />}
+          {meta && <Row label="Headphones" value={meta.headphones ? 'yes' : 'no'} />}
           <Row label="Duration"     value={fmtSec(report.totalDurationSec)} />
           <Row label="Analyzed"     value={`${fmtSec(report.analyzeStartSec)} → ${fmtSec(report.analyzeEndSec)}`} />
           <Row label="Peak level"   value={fmtDb(report.overallPeakDb)} />
