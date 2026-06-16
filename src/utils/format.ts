@@ -1,6 +1,6 @@
 export const fmtDb = (n: number) => (isFinite(n) ? `${n.toFixed(1)} dBFS` : '-∞ dBFS');
 export const fmtSec = (s: number) => `${s.toFixed(1)}s`;
-export const fmtPct = (n: number) => `${n.toFixed(1)}%`;
+export const fmtPct = (n: number) => `${n.toFixed(4)}%`;
 
 export const fmtTime = (s: number): string => {
   const h   = Math.floor(s / 3600);
