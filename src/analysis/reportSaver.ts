@@ -5,9 +5,18 @@ import { AnalysisReport } from './types';
 // Persists the SAF directory URI the user chose, so we only prompt once.
 const SAF_URI_FILE = new File(Paths.document, 'sleeper-report-dir.txt');
 
-function reportFileName(report: AnalysisReport): string {
-  const base = report.filePath.split('/').pop() ?? 'report';
-  return base.replace(/\.wav$/i, '.report.json');
+/**
+ * The recording's own name. Files opened through the picker are copied into the
+ * app cache under a generated UUID, so `filePath` is opaque for those —
+ * `displayName` is the only real name we have.
+ */
+export function recordingName(report: AnalysisReport): string {
+  // `||` not `??`: an empty segment should fall through, and ''.split('/').pop() is ''.
+  return report.displayName || report.filePath.split('/').pop() || 'recording';
+}
+
+export function reportFileName(report: AnalysisReport): string {
+  return `${recordingName(report).replace(/\.wav$/i, '')}.report.json`;
 }
 
 function serializeReport(report: AnalysisReport): string {

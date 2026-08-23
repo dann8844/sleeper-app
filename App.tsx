@@ -7,18 +7,31 @@ import { AnalysisReport } from './src/analysis/types';
 import RecordScreen from './src/screens/RecordScreen';
 import PostRecordScreen from './src/screens/PostRecordScreen';
 import ReportScreen from './src/screens/ReportScreen';
+import OffsetsScreen from './src/screens/OffsetsScreen';
 
-type Screen = 'record' | 'post-record' | 'analyzing' | 'report';
+type Screen = 'record' | 'post-record' | 'offsets' | 'analyzing' | 'report';
 
 interface PostRecordState {
   filePath: string;
   thresholdDb: number;
+  classifyFailures: number;
+}
+
+/** An analysis staged on the offsets screen, waiting to be confirmed. */
+interface PendingAnalysis {
+  filePath: string;
+  thresholdDb: number;
+  isSleepRecording: boolean;
+  displayName?: string;
 }
 
 export default function App() {
   const [screen, setScreen]         = useState<Screen>('record');
   const [postRecord, setPostRecord] = useState<PostRecordState | null>(null);
   const [report, setReport]         = useState<AnalysisReport | null>(null);
+  const [reportSource, setSource]   = useState<'analysis' | 'file'>('analysis');
+  const [pending, setPending]       = useState<PendingAnalysis | null>(null);
+  const [progress, setProgress]     = useState<{ done: number; total: number } | null>(null);
 
   useEffect(() => {
     configureAudioSession();
@@ -31,18 +44,39 @@ export default function App() {
       return false;
     });
     return () => sub.remove();
-  }, [screen]);
+  }, [screen, postRecord]);
 
-  function handleRecordingDone(filePath: string, thresholdDb: number) {
-    setPostRecord({ filePath, thresholdDb });
+  function handleRecordingDone(filePath: string, thresholdDb: number, classifyFailures: number) {
+    setPostRecord({ filePath, thresholdDb, classifyFailures });
     setScreen('post-record');
   }
 
-  async function handleAnalysisReady(filePath: string, isSleepRecording: boolean, thresholdDb: number, displayName?: string) {
+  function handleAnalysisReady(filePath: string, isSleepRecording: boolean, thresholdDb: number, displayName?: string) {
+    setPending({ filePath, thresholdDb, isSleepRecording, displayName });
+    setScreen('offsets');
+  }
+
+  function handleAnalyzePostRecord() {
+    if (!postRecord) return;
+    setPending({ filePath: postRecord.filePath, thresholdDb: postRecord.thresholdDb, isSleepRecording: true });
+    setScreen('offsets');
+  }
+
+  async function handleOffsetsConfirm(startOffsetMin: number, endOffsetMin: number) {
+    if (!pending) return;
+    setProgress(null);
     setScreen('analyzing');
     try {
-      const result = await analyzeFile(filePath, { isSleepRecording, thresholdDb, displayName });
+      const result = await analyzeFile(pending.filePath, {
+        isSleepRecording: pending.isSleepRecording,
+        thresholdDb:      pending.thresholdDb,
+        displayName:      pending.displayName,
+        startOffsetMin,
+        endOffsetMin,
+        onClassifyProgress: (done, total) => setProgress({ done, total }),
+      });
       setReport(result);
+      setSource('analysis');
       setScreen('report');
     } catch (e: any) {
       const msg = String(e?.message ?? e ?? 'Unknown error');
@@ -51,14 +85,23 @@ export default function App() {
     }
   }
 
-  async function handleAnalyzePostRecord() {
-    if (!postRecord) return;
-    await handleAnalysisReady(postRecord.filePath, true, postRecord.thresholdDb);
+  function handleReportLoaded(loaded: AnalysisReport) {
+    setReport(loaded);
+    setSource('file');
+    setScreen('report');
   }
 
   function handleBack() {
+    // Backing out of offsets returns to the recording it was staged from,
+    // rather than discarding it.
+    if (screen === 'offsets' && postRecord) {
+      setPending(null);
+      setScreen('post-record');
+      return;
+    }
     setReport(null);
     setPostRecord(null);
+    setPending(null);
     setScreen('record');
   }
 
@@ -70,6 +113,7 @@ export default function App() {
         <RecordScreen
           onRecordingDone={handleRecordingDone}
           onAnalysisReady={handleAnalysisReady}
+          onReportLoaded={handleReportLoaded}
         />
       )}
 
@@ -77,20 +121,29 @@ export default function App() {
         <PostRecordScreen
           filePath={postRecord.filePath}
           thresholdDb={postRecord.thresholdDb}
+          classifyFailures={postRecord.classifyFailures}
           onAnalyze={handleAnalyzePostRecord}
           onBack={handleBack}
         />
       )}
 
+      {screen === 'offsets' && (
+        <OffsetsScreen onConfirm={handleOffsetsConfirm} onBack={handleBack} />
+      )}
+
       {screen === 'analyzing' && (
         <View style={styles.analyzing}>
           <ActivityIndicator size="large" color="#1f6feb" />
-          <Text style={styles.analyzingText}>Analyzing recording…</Text>
+          <Text style={styles.analyzingText}>
+            {progress
+              ? `Classifying ${progress.done}/${progress.total} events…`
+              : 'Analyzing recording…'}
+          </Text>
         </View>
       )}
 
       {screen === 'report' && report && (
-        <ReportScreen report={report} onBack={handleBack} />
+        <ReportScreen report={report} onBack={handleBack} source={reportSource} />
       )}
     </View>
   );

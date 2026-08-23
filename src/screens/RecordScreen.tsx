@@ -8,19 +8,22 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { requestMicPermission, startRecording, stopRecording } from '../recorder';
+import { LiveClassification, requestMicPermission, startRecording, stopRecording } from '../recorder';
 import { startBackgroundService, stopBackgroundService } from '../recorder/backgroundService';
-import { pickAudioFile } from '../analysis/filePicker';
+import { pickAudioFile, pickReportFile } from '../analysis/filePicker';
+import { loadReportFile } from '../analysis/reportLoader';
+import { AnalysisReport } from '../analysis/types';
 import { DEFAULT_THRESHOLD_DBFS } from '../analysis/engine';
 import { fmtDb } from '../utils/format';
 import { loadSettings, saveSettings } from '../utils/settings';
 
 interface Props {
-  onRecordingDone: (filePath: string, thresholdDb: number) => void;
+  onRecordingDone: (filePath: string, thresholdDb: number, classifyFailures: number) => void;
   onAnalysisReady: (filePath: string, isSleepRecording: boolean, thresholdDb: number, displayName?: string) => void;
+  onReportLoaded: (report: AnalysisReport) => void;
 }
 
-export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props) {
+export default function RecordScreen({ onRecordingDone, onAnalysisReady, onReportLoaded }: Props) {
   const [recording, setRecording]       = useState(false);
   const [noiseCount, setNoiseCount]     = useState(0);
   const [lastDb, setLastDb]             = useState<number | null>(null);
@@ -29,6 +32,9 @@ export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [bonnet, setBonnet]             = useState(false);
   const [headphones, setHeadphones]     = useState(false);
+  const [noiseSupp, setNoiseSupp]       = useState(true);
+  const [live, setLive]                 = useState<LiveClassification | null>(null);
+  const [failures, setFailures]         = useState(0);
   const cleanupRef                      = useRef<(() => void) | null>(null);
   const prevNoiseRef                    = useRef(false);
 
@@ -37,6 +43,7 @@ export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props
       setThreshold(String(s.thresholdAbs));
       setBonnet(s.bonnet);
       setHeadphones(s.headphones);
+      setNoiseSupp(s.noiseSuppression);
     });
   }, []);
 
@@ -48,12 +55,13 @@ export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props
       if (recording) {
         cleanupRef.current?.();
         setRecording(false);
+        setLive(null);
         await stopBackgroundService();
         const path = await stopRecording();
         setNoiseCount(0);
         setLastDb(null);
         setIsNoise(false);
-        onRecordingDone(path, validThreshold ? threshold : DEFAULT_THRESHOLD_DBFS);
+        onRecordingDone(path, validThreshold ? threshold : DEFAULT_THRESHOLD_DBFS, failures);
       } else {
         const granted = await requestMicPermission();
         if (!granted) {
@@ -63,12 +71,17 @@ export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props
         setNoiseCount(0);
         setLastDb(null);
         setIsNoise(false);
-        saveSettings({ thresholdAbs: Math.abs(threshold), bonnet, headphones });
+        setLive(null);
+        setFailures(0);
+        saveSettings({ thresholdAbs: Math.abs(threshold), bonnet, headphones, noiseSuppression: noiseSupp });
         const cleanup = startRecording({
           thresholdDb: validThreshold ? threshold : DEFAULT_THRESHOLD_DBFS,
           soundEnabled,
           bonnet,
           headphones,
+          noiseSuppression: noiseSupp,
+          onClassified: setLive,
+          onClassifyFailure: setFailures,
           onNoise: (noise, db) => {
             setLastDb(db);
             setIsNoise(noise);
@@ -90,10 +103,20 @@ export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props
     try {
       const file = await pickAudioFile();
       if (!file) return;
-      saveSettings({ thresholdAbs: Math.abs(threshold), bonnet, headphones });
+      saveSettings({ thresholdAbs: Math.abs(threshold), bonnet, headphones, noiseSuppression: noiseSupp });
       onAnalysisReady(file.uri, true, validThreshold ? threshold : DEFAULT_THRESHOLD_DBFS, file.name);
     } catch (e: any) {
       Alert.alert('Error', e?.message ?? 'Could not open file.');
+    }
+  }
+
+  async function handleOpenReport() {
+    try {
+      const file = await pickReportFile();
+      if (!file) return;
+      onReportLoaded(await loadReportFile(file.uri));
+    } catch (e: any) {
+      Alert.alert('Error', e?.message ?? 'Could not open report.');
     }
   }
 
@@ -116,6 +139,26 @@ export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props
           <Text style={styles.statLabel}>{isNoise ? 'NOISE DETECTED' : 'Listening…'}</Text>
           <Text style={styles.dbText}>{lastDb != null ? fmtDb(lastDb) : '—'}</Text>
           <Text style={styles.countText}>{noiseCount} noise event{noiseCount !== 1 ? 's' : ''}</Text>
+
+          {failures > 0 && (
+            <Text style={styles.classifierDown}>
+              {failures} classification{failures !== 1 ? 's' : ''} failed — alerted anyway
+            </Text>
+          )}
+
+          {live && (
+            <View style={styles.liveBox}>
+              {live.relevant && <Text style={styles.relevantTag}>RELEVANT</Text>}
+              {live.labels.map(label => (
+                <Text
+                  key={label.name}
+                  style={[styles.labelRow, live.relevant && styles.labelRowRelevant]}
+                >
+                  {label.name}  {label.score.toFixed(2)}
+                </Text>
+              ))}
+            </View>
+          )}
         </View>
       )}
 
@@ -184,8 +227,26 @@ export default function RecordScreen({ onRecordingDone, onAnalysisReady }: Props
             />
           </View>
 
+          {/* Noise suppression toggle */}
+          <View style={styles.settingRow}>
+            <View style={styles.settingLabelGroup}>
+              <Text style={styles.settingLabel}>Noise suppression</Text>
+              <Text style={styles.settingHint}>less room tone; may alter levels</Text>
+            </View>
+            <Switch
+              value={noiseSupp}
+              onValueChange={setNoiseSupp}
+              trackColor={{ false: '#21262d', true: '#1f6feb' }}
+              thumbColor="#fff"
+            />
+          </View>
+
           <TouchableOpacity style={styles.fileBtn} onPress={handlePickFile} activeOpacity={0.7}>
             <Text style={styles.fileBtnText}>Analyze existing recording…</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.fileBtn} onPress={handleOpenReport} activeOpacity={0.7}>
+            <Text style={styles.fileBtnText}>Open saved report…</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -205,6 +266,11 @@ const styles = StyleSheet.create({
   statLabel:         { color: '#8b949e', fontSize: 13, letterSpacing: 1 },
   dbText:            { color: '#e6f4fe', fontSize: 20, fontFamily: 'monospace' },
   countText:         { color: '#58a6ff', fontSize: 16 },
+  classifierDown:    { color: '#d29922', fontSize: 11, marginTop: 4, textAlign: 'center' },
+  liveBox:           { alignItems: 'center', marginTop: 8, gap: 2 },
+  relevantTag:       { color: '#3fb950', fontSize: 15, fontWeight: '700', letterSpacing: 2, marginBottom: 4 },
+  labelRow:          { color: '#8b949e', fontSize: 12, fontFamily: 'monospace' },
+  labelRowRelevant:  { color: '#e6f4fe' },
   settings:          { width: '100%', marginTop: 40, paddingHorizontal: 32, gap: 0 },
   settingRow:        { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderTopWidth: 1, borderTopColor: '#21262d' },
   settingLabelGroup: { flex: 1, marginRight: 16 },

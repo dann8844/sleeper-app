@@ -7,12 +7,22 @@ export interface WindowResult {
   isNoise: boolean;
 }
 
+/** One AudioSet class and its score, as returned by the classifier. */
+export interface AudioLabel {
+  name: string;
+  score: number;
+}
+
 export interface NoiseEvent {
   startSec: number;
   endSec: number;
   durationSec: number;
   peakDb: number;
   avgDb: number;
+  /** Coarse bucket derived from `labels`. Absent if classification did not run. */
+  verdict?: string;
+  /** Top AudioSet labels, highest score first. Absent if classification did not run. */
+  labels?: AudioLabel[];
 }
 
 export interface AnalysisReport {
@@ -35,7 +45,7 @@ export interface AnalysisReport {
   percentageNoise: number;
 
   noiseEvents: NoiseEvent[];
-  windows: WindowResult[];
+  windows?: WindowResult[];
   sequences: NoiseSequenceRow[];
   noiseByHour: NoiseByHourRow[];
 }

@@ -2,6 +2,10 @@ export const fmtDb = (n: number) => (isFinite(n) ? `${n.toFixed(1)} dBFS` : '-âˆ
 export const fmtSec = (s: number) => `${s.toFixed(1)}s`;
 export const fmtPct = (n: number) => `${n.toFixed(4)}%`;
 
+// Bare-value variants for tables whose unit lives in the column header.
+export const fmtSecValue = (s: number) => s.toFixed(1);
+export const fmtDbValue  = (n: number) => (Number.isFinite(n) ? n.toFixed(1) : '-âˆž');
+
 export const fmtTime = (s: number): string => {
   const h   = Math.floor(s / 3600);
   const m   = Math.floor((s % 3600) / 60);

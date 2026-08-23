@@ -12,11 +12,12 @@ import * as MediaLibrary from 'expo-media-library';
 interface Props {
   filePath: string;
   thresholdDb: number;
+  classifyFailures: number;
   onAnalyze: () => void;
   onBack: () => void;
 }
 
-export default function PostRecordScreen({ filePath, onAnalyze, onBack }: Props) {
+export default function PostRecordScreen({ filePath, classifyFailures, onAnalyze, onBack }: Props) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved]   = useState(false);
 
@@ -45,6 +46,12 @@ export default function PostRecordScreen({ filePath, onAnalyze, onBack }: Props)
       <Text style={styles.title}>RECORDING COMPLETE</Text>
 
       <Text style={styles.fileName} numberOfLines={2}>{fileName}</Text>
+
+      <Text style={styles.classifyStat}>
+        {classifyFailures === 0
+          ? 'No classification failures'
+          : `${classifyFailures} classification${classifyFailures !== 1 ? 's' : ''} failed during recording`}
+      </Text>
 
       <TouchableOpacity
         style={[styles.btn, styles.btnSave, (saving || saved) && styles.btnDisabled]}
@@ -76,7 +83,8 @@ export default function PostRecordScreen({ filePath, onAnalyze, onBack }: Props)
 const styles = StyleSheet.create({
   container:   { flex: 1, backgroundColor: '#0d1117', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 32 },
   title:       { color: '#e6f4fe', fontSize: 20, fontWeight: '700', letterSpacing: 4, marginBottom: 24 },
-  fileName:    { color: '#8b949e', fontSize: 12, fontFamily: 'monospace', textAlign: 'center', marginBottom: 48 },
+  fileName:    { color: '#8b949e', fontSize: 12, fontFamily: 'monospace', textAlign: 'center', marginBottom: 12 },
+  classifyStat:{ color: '#8b949e', fontSize: 12, textAlign: 'center', marginBottom: 36 },
   btn:         { width: '100%', paddingVertical: 16, borderRadius: 10, alignItems: 'center', marginBottom: 14 },
   btnSave:     { backgroundColor: '#21262d', borderWidth: 1, borderColor: '#30363d' },
   btnAnalyze:  { backgroundColor: '#1f6feb' },
