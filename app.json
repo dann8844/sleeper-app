@@ -3,9 +3,9 @@
     "name": "sleeper-app",
     "slug": "sleeper-app",
     "version": "1.0.0",
+    "newArchEnabled": false,
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true
     },
@@ -24,15 +24,19 @@
           "isAccessMediaLocationEnabled": true
         }
       ],
+      "./plugins/withOnnxruntimePackage",
+      "./plugins/withBackgroundActionsManifest",
       [
         "expo-build-properties",
         {
           "android": {
-            "newArchEnabled": false
+            "packagingOptions": {
+              "pickFirst": ["**/libreactnative.so"]
+            }
           }
         }
       ],
-      "./plugins/withBackgroundActionsManifest"
+      "onnxruntime-react-native"
     ],
     "android": {
       "permissions": [
